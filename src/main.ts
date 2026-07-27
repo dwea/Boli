@@ -46,8 +46,9 @@ function sizeCanvas(height: number) {
   const dpr = window.devicePixelRatio || 1;
   canvas.width = BOARD_WIDTH * dpr;
   canvas.height = height * dpr;
-  canvas.style.width = `${BOARD_WIDTH}px`;
-  canvas.style.height = `${height}px`;
+  canvas.style.width = "100%";
+  canvas.style.maxWidth = `${BOARD_WIDTH}px`;
+  canvas.style.aspectRatio = `${BOARD_WIDTH} / ${height}`;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 
