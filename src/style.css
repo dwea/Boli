@@ -180,6 +180,26 @@ body {
   cursor: not-allowed;
 }
 
+.secondary-btn {
+  background: transparent;
+  border: 1px solid #3a3f5c;
+  color: var(--muted);
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.secondary-btn:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.secondary-btn.confirming {
+  border-color: #ff6b6b;
+  color: #ff6b6b;
+}
+
 #play-screen {
   display: flex;
   flex-direction: column;
@@ -229,6 +249,13 @@ body {
   touch-action: none;
   cursor: pointer;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+#controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
 }
 
 #controls .hint {

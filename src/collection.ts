@@ -122,3 +122,9 @@ export function grantRandomCard(): SectionCard {
   const template = TEMPLATES[Math.floor(Math.random() * TEMPLATES.length)];
   return { id: makeCardId(template.id), templateId: template.id };
 }
+
+export function resetCollection(): SectionCard[] {
+  const starter = starterCollection();
+  saveCollection(starter);
+  return starter;
+}

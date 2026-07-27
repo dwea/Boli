@@ -1,5 +1,11 @@
 import { BoardBuilder } from "./builder";
-import { grantRandomCard, loadCollection, saveCollection, templateFor } from "./collection";
+import {
+  grantRandomCard,
+  loadCollection,
+  resetCollection,
+  saveCollection,
+  templateFor,
+} from "./collection";
 import { PachinkoGame } from "./game/engine";
 
 const BOARD_WIDTH = 360;
@@ -23,6 +29,8 @@ const gameoverEl = document.getElementById("gameover")!;
 const finalScoreEl = document.getElementById("final-score")!;
 const rewardLabelEl = document.getElementById("reward-label")!;
 const restartBtn = document.getElementById("restart") as HTMLButtonElement;
+const abortTurnBtn = document.getElementById("abort-turn") as HTMLButtonElement;
+const resetCollectionBtn = document.getElementById("reset-collection") as HTMLButtonElement;
 
 let collection = loadCollection();
 const builder = new BoardBuilder(trayList, stackList, heightFill, heightLabel, startTurnBtn);
@@ -116,6 +124,36 @@ function backToCollection() {
   builder.setCollection(collection);
 }
 
+function abortTurn() {
+  if (!gameOver) game.stop();
+  gameOver = true;
+  gameoverEl.classList.add("hidden");
+  backToCollection();
+}
+
+function withConfirm(button: HTMLButtonElement, label: string, confirmLabel: string, action: () => void) {
+  let confirming = false;
+  let timeoutId = 0;
+  button.addEventListener("click", () => {
+    if (!confirming) {
+      confirming = true;
+      button.textContent = confirmLabel;
+      button.classList.add("confirming");
+      timeoutId = window.setTimeout(() => {
+        confirming = false;
+        button.textContent = label;
+        button.classList.remove("confirming");
+      }, 3000);
+      return;
+    }
+    window.clearTimeout(timeoutId);
+    confirming = false;
+    button.textContent = label;
+    button.classList.remove("confirming");
+    action();
+  });
+}
+
 function loop(now: number) {
   const delta = Math.min(32, now - lastTime);
   lastTime = now;
@@ -143,3 +181,9 @@ canvas.addEventListener("pointerdown", (e) => {
 
 startTurnBtn.addEventListener("click", startTurn);
 restartBtn.addEventListener("click", backToCollection);
+abortTurnBtn.addEventListener("click", abortTurn);
+
+withConfirm(resetCollectionBtn, "Reset collection", "Tap again to confirm", () => {
+  collection = resetCollection();
+  builder.setCollection(collection);
+});
