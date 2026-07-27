@@ -32,14 +32,18 @@
       </div>
 
       <div id="play-screen" class="hidden">
-        <div id="hud">
-          <div class="stat"><span class="label">Score</span><span id="stat-score">0</span></div>
-          <div class="stat"><span class="label">Balls</span><span id="stat-balls">0</span></div>
-          <div class="stat"><span class="label">Lives</span><span id="stat-lives">5</span></div>
+        <div id="top-bar">
+          <div id="hud">
+            <div class="stat"><span class="label">Score</span><span id="stat-score">0</span></div>
+            <div class="stat"><span class="label">Balls</span><span id="stat-balls">0</span></div>
+            <div class="stat"><span class="label">Lives</span><span id="stat-lives">5</span></div>
+          </div>
+          <div id="drop-rail">
+            <span>Tap anywhere to drop a ball&nbsp;&#8595;</span>
+          </div>
         </div>
         <canvas id="board"></canvas>
         <div id="controls">
-          <p class="hint">Tap/click the top of the board to drop a ball there.</p>
           <button id="abort-turn" class="secondary-btn">Reset / start again</button>
         </div>
         <div id="gameover" class="hidden">

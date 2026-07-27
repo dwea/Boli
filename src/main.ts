@@ -22,6 +22,7 @@ const startTurnBtn = document.getElementById("start-turn") as HTMLButtonElement;
 
 const canvas = document.getElementById("board") as HTMLCanvasElement;
 const ctx = canvas.getContext("2d")!;
+const dropRail = document.getElementById("drop-rail")!;
 const scoreEl = document.getElementById("stat-score")!;
 const ballsEl = document.getElementById("stat-balls")!;
 const livesEl = document.getElementById("stat-lives")!;
@@ -43,6 +44,7 @@ let gameOver = false;
 let game: PachinkoGame;
 let rafId = 0;
 let lastTime = performance.now();
+let scrollTargetY = 0;
 
 function updateHud() {
   scoreEl.textContent = String(score);
@@ -57,6 +59,7 @@ function sizeCanvas(height: number) {
   canvas.style.width = "100%";
   canvas.style.maxWidth = `${BOARD_WIDTH}px`;
   canvas.style.aspectRatio = `${BOARD_WIDTH} / ${height}`;
+  dropRail.style.maxWidth = `${BOARD_WIDTH}px`;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 
@@ -98,6 +101,8 @@ function startTurn() {
 
   buildScreen.classList.add("hidden");
   playScreen.classList.remove("hidden");
+  window.scrollTo(0, 0);
+  scrollTargetY = 0;
 
   cancelAnimationFrame(rafId);
   lastTime = performance.now();
@@ -154,20 +159,44 @@ function withConfirm(button: HTMLButtonElement, label: string, confirmLabel: str
   });
 }
 
+// Keeps the furthest-fallen ball comfortably in view as the board scrolls
+// past one screen -- nudges scroll toward it once it drifts outside the
+// middle band of the viewport, eased rather than snapped.
+function followLeadBall() {
+  const leadY = game.getLeadBallY();
+  if (leadY === null) return;
+  const rect = canvas.getBoundingClientRect();
+  if (rect.height <= 0) return;
+
+  const scale = rect.height / game.boardHeight;
+  const ballViewportY = rect.top + leadY * scale;
+  const vh = window.innerHeight;
+
+  if (ballViewportY > vh * 0.7 || ballViewportY < vh * 0.3) {
+    scrollTargetY = window.scrollY + (ballViewportY - vh * 0.5);
+  }
+
+  const current = window.scrollY;
+  const next = current + (scrollTargetY - current) * 0.12;
+  if (Math.abs(next - current) > 0.5) {
+    window.scrollTo(0, next);
+  }
+}
+
 function loop(now: number) {
   const delta = Math.min(32, now - lastTime);
   lastTime = now;
   if (!gameOver) {
     game.tick(delta);
     game.render(ctx);
+    followLeadBall();
   }
   rafId = requestAnimationFrame(loop);
 }
 
-function dropAt(clientX: number, clientY: number) {
+function dropAt(clientX: number) {
   if (gameOver) return;
-  const rect = canvas.getBoundingClientRect();
-  if (clientY < rect.top || clientY > rect.top + 60) return;
+  const rect = dropRail.getBoundingClientRect();
   const scaleX = BOARD_WIDTH / rect.width;
   const x = (clientX - rect.left) * scaleX;
   game.dropBall(x);
@@ -175,8 +204,8 @@ function dropAt(clientX: number, clientY: number) {
   updateHud();
 }
 
-canvas.addEventListener("pointerdown", (e) => {
-  dropAt(e.clientX, e.clientY);
+dropRail.addEventListener("pointerdown", (e) => {
+  dropAt(e.clientX);
 });
 
 startTurnBtn.addEventListener("click", startTurn);

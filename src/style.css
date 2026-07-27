@@ -215,6 +215,20 @@ body {
   min-height: 16px;
 }
 
+#top-bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  background: var(--bg);
+  padding-top: 4px;
+  padding-bottom: 6px;
+}
+
 #hud {
   display: flex;
   gap: 24px;
@@ -222,6 +236,28 @@ body {
   padding: 10px 20px;
   border-radius: 12px;
   width: 100%;
+}
+
+#drop-rail {
+  width: 100%;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed var(--accent);
+  border-radius: 10px;
+  background: rgba(255, 183, 3, 0.08);
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+}
+
+#drop-rail:active {
+  background: rgba(255, 183, 3, 0.2);
 }
 
 .stat {
@@ -258,20 +294,14 @@ body {
   gap: 8px;
 }
 
-#controls .hint {
-  color: var(--muted);
-  font-size: 13px;
-  margin: 0;
-}
-
 #gameover {
-  position: absolute;
+  position: fixed;
   inset: 0;
+  z-index: 30;
   display: flex;
   align-items: center;
   justify-content: center;
   background: rgba(5, 6, 12, 0.75);
-  border-radius: 12px;
 }
 
 #gameover.hidden {

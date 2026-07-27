@@ -150,6 +150,16 @@ export class PachinkoGame {
     return this.balls.size;
   }
 
+  /**
+   * Board-space y of the oldest still-falling ball, for camera-follow --
+   * i.e. literally "the first ball" of whatever's currently in flight.
+   * Sets preserve insertion order, so the first entry is the oldest.
+   */
+  getLeadBallY(): number | null {
+    for (const ball of this.balls) return ball.position.y;
+    return null;
+  }
+
   tick(deltaMs: number) {
     if (!this.running) return;
     Engine.update(this.engine, deltaMs);
