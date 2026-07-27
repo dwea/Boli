@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Boli - Pachinko Prototype</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <div id="hud">
+        <div class="stat"><span class="label">Score</span><span id="stat-score">0</span></div>
+        <div class="stat"><span class="label">Balls</span><span id="stat-balls">0</span></div>
+        <div class="stat"><span class="label">Lives</span><span id="stat-lives">5</span></div>
+      </div>
+      <canvas id="board"></canvas>
+      <div id="controls">
+        <p class="hint">Tap/click the top of the board to drop a ball there.</p>
+      </div>
+      <div id="gameover" class="hidden">
+        <div class="panel">
+          <h2>Out of balls</h2>
+          <p>Final score: <span id="final-score">0</span></p>
+          <button id="restart">Play again</button>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

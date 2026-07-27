@@ -1,0 +1,107 @@
+:root {
+  color-scheme: dark;
+  --bg: #0b0d17;
+  --panel: #161a2b;
+  --accent: #ffb703;
+  --text: #eef1ff;
+  --muted: #8b90ab;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  position: relative;
+}
+
+#hud {
+  display: flex;
+  gap: 24px;
+  background: var(--panel);
+  padding: 10px 20px;
+  border-radius: 12px;
+  width: 100%;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 60px;
+}
+
+.stat .label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.stat span:last-child {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+#board {
+  background: #0f172a;
+  border-radius: 12px;
+  touch-action: none;
+  cursor: pointer;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+#controls .hint {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 0;
+}
+
+#gameover {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 6, 12, 0.75);
+  border-radius: 12px;
+}
+
+#gameover.hidden {
+  display: none;
+}
+
+#gameover .panel {
+  background: var(--panel);
+  padding: 24px 32px;
+  border-radius: 12px;
+  text-align: center;
+}
+
+#gameover button {
+  margin-top: 12px;
+  background: var(--accent);
+  border: none;
+  color: #1a1200;
+  font-weight: 700;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+}

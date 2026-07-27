@@ -1,0 +1,19 @@
+{
+  "name": "boli",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "matter-js": "^0.20.0"
+  },
+  "devDependencies": {
+    "@types/matter-js": "^0.19.7",
+    "typescript": "^5.6.2",
+    "vite": "^5.4.0"
+  }
+}
