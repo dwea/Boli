@@ -60,10 +60,28 @@ export class BoardBuilder {
     window.addEventListener("pointercancel", () => this.cancelDrag());
   }
 
+  /** Hard reset: every card goes back to the tray, board is cleared. */
   setCollection(cards: SectionCard[]) {
     this.cardsById = new Map(cards.map((c) => [c.id, c]));
     this.trayOrder = cards.map((c) => c.id);
     this.stackOrder = [];
+    this.render();
+  }
+
+  /**
+   * Update the owned cards without disturbing the current board
+   * arrangement -- newly owned cards (e.g. turn rewards) land in the tray,
+   * everything already placed stays exactly where it was.
+   */
+  syncOwnedCards(cards: SectionCard[]) {
+    this.cardsById = new Map(cards.map((c) => [c.id, c]));
+    const knownIds = new Set(cards.map((c) => c.id));
+    this.trayOrder = this.trayOrder.filter((id) => knownIds.has(id));
+    this.stackOrder = this.stackOrder.filter((id) => knownIds.has(id));
+    const placed = new Set([...this.trayOrder, ...this.stackOrder]);
+    for (const card of cards) {
+      if (!placed.has(card.id)) this.trayOrder.push(card.id);
+    }
     this.render();
   }
 

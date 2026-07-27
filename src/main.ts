@@ -121,7 +121,7 @@ function backToCollection() {
   cancelAnimationFrame(rafId);
   playScreen.classList.add("hidden");
   buildScreen.classList.remove("hidden");
-  builder.setCollection(collection);
+  builder.syncOwnedCards(collection);
 }
 
 function abortTurn() {
