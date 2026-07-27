@@ -29,6 +29,170 @@ body {
   gap: 12px;
   padding: 16px;
   position: relative;
+  width: 100%;
+  max-width: 400px;
+}
+
+.hidden {
+  display: none !important;
+}
+
+#build-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+}
+
+#build-screen h1 {
+  margin: 0;
+  font-size: 22px;
+}
+
+#build-screen .hint {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 0 0 4px;
+}
+
+.panel {
+  background: var(--panel);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.panel h2 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.card-list {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 56px;
+}
+
+.empty-hint {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 6px 0;
+  text-align: center;
+}
+
+.card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #232948;
+  border-left: 4px solid var(--accent);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+  cursor: grab;
+  user-select: none;
+}
+
+.card-pins {
+  border-left-color: #5b6a9c;
+}
+
+.card-buckets {
+  border-left-color: #2f9e6b;
+}
+
+.card-multiplier {
+  border-left-color: #ffb703;
+}
+
+.card-height {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.card-dragging-source {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.card-ghost {
+  position: fixed;
+  z-index: 1000;
+  pointer-events: none;
+  opacity: 0.9;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
+  transform: rotate(1.5deg);
+}
+
+.insertion-indicator {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--accent);
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+#height-meter {
+  height: 8px;
+  background: #232948;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+#height-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--accent);
+  transition: width 0.15s ease;
+}
+
+#height-fill.over-budget {
+  background: #ff6b6b;
+}
+
+.meter-label {
+  margin: -6px 0 0;
+  font-size: 11px;
+  color: var(--muted);
+  text-align: right;
+}
+
+#start-turn {
+  background: var(--accent);
+  border: none;
+  color: #1a1200;
+  font-weight: 700;
+  padding: 12px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 15px;
+}
+
+#start-turn:disabled {
+  background: #3a3f5c;
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+#play-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  position: relative;
+}
+
+#reward-label {
+  color: var(--accent);
+  font-size: 13px;
+  min-height: 16px;
 }
 
 #hud {

@@ -1,19 +1,18 @@
+import { BoardBuilder } from "./builder";
+import { grantRandomCard, loadCollection, saveCollection, templateFor } from "./collection";
 import { PachinkoGame } from "./game/engine";
-import type { SectionDefinition } from "./game/types";
 
 const BOARD_WIDTH = 360;
 const STARTING_LIVES = 5;
 const EXPLODE_BONUS_PER_BALL = 5;
 
-const SECTIONS: SectionDefinition[] = [
-  { id: "p1", label: "Staggered Field", config: { kind: "pins", height: 170, pattern: "staggered", exploderChance: 0.06 } },
-  { id: "b1", label: "Sparse Catchers", config: { kind: "buckets", height: 50, layout: "sparse", bucketCount: 5 } },
-  { id: "m1", label: "Doubler", config: { kind: "multiplier", height: 14 } },
-  { id: "p2", label: "Funnel Field", config: { kind: "pins", height: 150, pattern: "funnel", exploderChance: 0.08 } },
-  { id: "b2", label: "Moving Wide Net", config: { kind: "buckets", height: 60, layout: "wide", bucketCount: 2, moving: true } },
-  { id: "p3", label: "Diamond Field", config: { kind: "pins", height: 150, pattern: "diamond" } },
-  { id: "b3", label: "Sparse Finale", config: { kind: "buckets", height: 70, layout: "sparse", bucketCount: 6 } },
-];
+const buildScreen = document.getElementById("build-screen")!;
+const playScreen = document.getElementById("play-screen")!;
+const trayList = document.getElementById("tray-list")!;
+const stackList = document.getElementById("stack-list")!;
+const heightFill = document.getElementById("height-fill")!;
+const heightLabel = document.getElementById("height-label")!;
+const startTurnBtn = document.getElementById("start-turn") as HTMLButtonElement;
 
 const canvas = document.getElementById("board") as HTMLCanvasElement;
 const ctx = canvas.getContext("2d")!;
@@ -22,7 +21,12 @@ const ballsEl = document.getElementById("stat-balls")!;
 const livesEl = document.getElementById("stat-lives")!;
 const gameoverEl = document.getElementById("gameover")!;
 const finalScoreEl = document.getElementById("final-score")!;
+const rewardLabelEl = document.getElementById("reward-label")!;
 const restartBtn = document.getElementById("restart") as HTMLButtonElement;
+
+let collection = loadCollection();
+const builder = new BoardBuilder(trayList, stackList, heightFill, heightLabel, startTurnBtn);
+builder.setCollection(collection);
 
 let score = 0;
 let ballsDropped = 0;
@@ -47,14 +51,18 @@ function sizeCanvas(height: number) {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 }
 
-function startGame() {
+function startTurn() {
+  const sections = builder.buildSectionDefinitions();
+  if (sections.length === 0) return;
+
   score = 0;
   ballsDropped = 0;
   lives = STARTING_LIVES;
   gameOver = false;
   gameoverEl.classList.add("hidden");
+  rewardLabelEl.textContent = "";
 
-  game = new PachinkoGame(SECTIONS, BOARD_WIDTH, {
+  game = new PachinkoGame(sections, BOARD_WIDTH, {
     onScore: (points) => {
       score += points;
       updateHud();
@@ -78,13 +86,33 @@ function startGame() {
 
   sizeCanvas(game.boardHeight);
   updateHud();
+
+  buildScreen.classList.add("hidden");
+  playScreen.classList.remove("hidden");
+
+  cancelAnimationFrame(rafId);
+  lastTime = performance.now();
+  rafId = requestAnimationFrame(loop);
 }
 
 function endGame() {
   gameOver = true;
   game.stop();
   finalScoreEl.textContent = String(score);
+
+  const reward = grantRandomCard();
+  collection = [...collection, reward];
+  saveCollection(collection);
+  rewardLabelEl.textContent = `New section unlocked: ${templateFor(reward.templateId).label}`;
+
   gameoverEl.classList.remove("hidden");
+}
+
+function backToCollection() {
+  cancelAnimationFrame(rafId);
+  playScreen.classList.add("hidden");
+  buildScreen.classList.remove("hidden");
+  builder.setCollection(collection);
 }
 
 function loop(now: number) {
@@ -112,11 +140,5 @@ canvas.addEventListener("pointerdown", (e) => {
   dropAt(e.clientX, e.clientY);
 });
 
-restartBtn.addEventListener("click", () => {
-  startGame();
-});
-
-startGame();
-cancelAnimationFrame(rafId);
-lastTime = performance.now();
-rafId = requestAnimationFrame(loop);
+startTurnBtn.addEventListener("click", startTurn);
+restartBtn.addEventListener("click", backToCollection);

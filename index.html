@@ -8,20 +8,45 @@
   </head>
   <body>
     <div id="app">
-      <div id="hud">
-        <div class="stat"><span class="label">Score</span><span id="stat-score">0</span></div>
-        <div class="stat"><span class="label">Balls</span><span id="stat-balls">0</span></div>
-        <div class="stat"><span class="label">Lives</span><span id="stat-lives">5</span></div>
+      <div id="build-screen">
+        <h1>Boli</h1>
+        <p class="hint">Drag sections from your collection into the board, top to bottom.</p>
+
+        <div id="stack-panel" class="panel">
+          <h2>Your board</h2>
+          <div id="stack-list" class="card-list"></div>
+        </div>
+
+        <div id="height-meter">
+          <div id="height-fill"></div>
+        </div>
+        <p id="height-label" class="meter-label">0 / 480px</p>
+
+        <div id="tray-panel" class="panel">
+          <h2>Your collection</h2>
+          <div id="tray-list" class="card-list"></div>
+        </div>
+
+        <button id="start-turn" disabled>Start Turn</button>
       </div>
-      <canvas id="board"></canvas>
-      <div id="controls">
-        <p class="hint">Tap/click the top of the board to drop a ball there.</p>
-      </div>
-      <div id="gameover" class="hidden">
-        <div class="panel">
-          <h2>Out of balls</h2>
-          <p>Final score: <span id="final-score">0</span></p>
-          <button id="restart">Play again</button>
+
+      <div id="play-screen" class="hidden">
+        <div id="hud">
+          <div class="stat"><span class="label">Score</span><span id="stat-score">0</span></div>
+          <div class="stat"><span class="label">Balls</span><span id="stat-balls">0</span></div>
+          <div class="stat"><span class="label">Lives</span><span id="stat-lives">5</span></div>
+        </div>
+        <canvas id="board"></canvas>
+        <div id="controls">
+          <p class="hint">Tap/click the top of the board to drop a ball there.</p>
+        </div>
+        <div id="gameover" class="hidden">
+          <div class="panel">
+            <h2>Out of balls</h2>
+            <p>Final score: <span id="final-score">0</span></p>
+            <p id="reward-label"></p>
+            <button id="restart">Back to collection</button>
+          </div>
         </div>
       </div>
     </div>
