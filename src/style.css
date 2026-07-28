@@ -230,6 +230,12 @@ body {
   min-height: 16px;
 }
 
+#coverage-label {
+  color: #8ecae6;
+  font-size: 13px;
+  margin: 4px 0 0;
+}
+
 #top-bar {
   position: sticky;
   top: 0;

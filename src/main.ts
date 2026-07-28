@@ -12,6 +12,7 @@ const BOARD_WIDTH = 360;
 const STARTING_LIVES = 5;
 const MAX_BALL_DROPS = 10;
 const EXPLODE_BONUS_PER_BALL = 5;
+const COVERAGE_BONUS_MAX = 50;
 
 const buildScreen = document.getElementById("build-screen")!;
 const playScreen = document.getElementById("play-screen")!;
@@ -30,6 +31,7 @@ const livesEl = document.getElementById("stat-lives")!;
 const gameoverEl = document.getElementById("gameover")!;
 const finalScoreEl = document.getElementById("final-score")!;
 const rewardLabelEl = document.getElementById("reward-label")!;
+const coverageLabelEl = document.getElementById("coverage-label")!;
 const restartBtn = document.getElementById("restart") as HTMLButtonElement;
 const abortTurnBtn = document.getElementById("abort-turn") as HTMLButtonElement;
 const resetCollectionBtn = document.getElementById("reset-collection") as HTMLButtonElement;
@@ -81,6 +83,7 @@ function startTurn() {
   gameOver = false;
   gameoverEl.classList.add("hidden");
   rewardLabelEl.textContent = "";
+  coverageLabelEl.textContent = "";
 
   game = new PachinkoGame(sections, BOARD_WIDTH, {
     onScore: (points) => {
@@ -118,6 +121,17 @@ function startTurn() {
 function endGame() {
   gameOver = true;
   game.stop();
+
+  const totalPins = game.totalPinCount;
+  const touchedPins = game.touchedPinCount;
+  if (totalPins > 0) {
+    const coverageBonus = Math.round(COVERAGE_BONUS_MAX * (touchedPins / totalPins));
+    score += coverageBonus;
+    updateHud();
+    coverageLabelEl.textContent = `+${coverageBonus} coverage bonus (${touchedPins}/${totalPins} pins hit)`;
+  } else {
+    coverageLabelEl.textContent = "";
+  }
   finalScoreEl.textContent = String(score);
 
   const reward = grantRandomCard();

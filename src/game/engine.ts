@@ -64,6 +64,7 @@ export class PachinkoGame {
   readonly world: Matter.World;
   readonly boardWidth: number;
   readonly boardHeight: number;
+  readonly totalPinCount: number;
   private movers: ReturnType<typeof buildBoard>["movers"];
   private launcherZones: LauncherZone[];
   private balls: Set<Matter.Body> = new Set();
@@ -86,6 +87,7 @@ export class PachinkoGame {
     this.boardHeight = board.totalHeight + 20;
     this.movers = board.movers;
     this.launcherZones = board.launcherZones;
+    this.totalPinCount = board.bodies.filter((b) => b.plugin?.game?.isPin).length;
     World.add(this.world, board.bodies);
 
     Events.on(this.engine, "collisionStart", (event) => {
