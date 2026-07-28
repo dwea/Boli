@@ -17,6 +17,12 @@ const { Engine, World, Bodies, Body, Events, Composite } = Matter;
 const EXPLOSION_RADIUS = 90;
 const EXPLOSION_FORCE = 0.03;
 const BUMPER_KICK_SPEED = 15;
+const BUMPER_BASE_VALUE = 5;
+// A hit streak on a given bumper escalates by BUMPER_BASE_VALUE each time,
+// but resets back to the base value if it goes quiet for this long. This is
+// a real-world pacing window (can the player keep the streak alive?), not a
+// simulated-motion duration, so it's measured against wall-clock time.
+const BUMPER_RESET_MS = 5000;
 // Guards only against the same crossing event re-triggering (e.g. a
 // freshly spawned sibling ball still overlapping the sensor) -- not a
 // permanent "already doubled here" flag, so every real downward crossing
@@ -52,11 +58,19 @@ export interface Particle {
 }
 
 export interface GameCallbacks {
-  onScore: (points: number, bucketX: number, bucketY: number) => void;
+  onScore: (points: number, x: number, y: number) => void;
   onMiss: () => void;
   onMultiply: () => void;
   onExplode: (ballsCaught: number) => void;
   onBallSettled: () => void;
+}
+
+export interface FloatingText {
+  x: number;
+  y: number;
+  text: string;
+  bornAt: number;
+  durationMs: number;
 }
 
 export class PachinkoGame {
@@ -72,6 +86,8 @@ export class PachinkoGame {
   private pinHits = new Map<Matter.Body, number>();
   private touchedPins = new Set<Matter.Body>();
   private bucketHits = new Map<Matter.Body, number>();
+  private bumperStreaks = new Map<Matter.Body, { value: number; lastHitAt: number }>();
+  private floatingTexts: FloatingText[] = [];
   private simTime = 0;
   private callbacks: GameCallbacks;
   private running = true;
@@ -170,6 +186,22 @@ export class PachinkoGame {
       y: (dy / dist) * BUMPER_KICK_SPEED - 2,
     });
     this.particles.push({ x: bumper.position.x, y: bumper.position.y, bornAt: this.simTime, color: "#ff2d78" });
+
+    const now = performance.now();
+    const streak = this.bumperStreaks.get(bumper);
+    const value =
+      streak && now - streak.lastHitAt < BUMPER_RESET_MS
+        ? streak.value + BUMPER_BASE_VALUE
+        : BUMPER_BASE_VALUE;
+    this.bumperStreaks.set(bumper, { value, lastHitAt: now });
+    this.floatingTexts.push({
+      x: bumper.position.x,
+      y: bumper.position.y,
+      text: `+${value}`,
+      bornAt: this.simTime,
+      durationMs: 500,
+    });
+    this.callbacks.onScore(value, bumper.position.x, bumper.position.y);
   }
 
   private explodeAt(x: number, y: number) {
@@ -242,6 +274,7 @@ export class PachinkoGame {
     this.enforceCeiling();
     for (const mover of this.movers) mover.update(this.simTime);
     this.particles = this.particles.filter((p) => this.simTime - p.bornAt < (p.durationMs ?? 400));
+    this.floatingTexts = this.floatingTexts.filter((t) => this.simTime - t.bornAt < t.durationMs);
   }
 
   // Sections without walls have no side colliders at all, so a ball only
@@ -454,6 +487,21 @@ export class PachinkoGame {
         ctx.lineWidth = 3;
         ctx.stroke();
       }
+    }
+
+    for (const t of this.floatingTexts) {
+      const age = Math.min(1, Math.max(0, (this.simTime - t.bornAt) / t.durationMs));
+      const scale = 0.7 + age * 0.8;
+      const alpha = Math.sin(Math.PI * age) * 0.9;
+      if (alpha <= 0.02) continue;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = "#ffd166";
+      ctx.font = `bold ${Math.round(13 * scale)}px system-ui, sans-serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(t.text, t.x, t.y - 6 - age * 16);
+      ctx.restore();
     }
   }
 }

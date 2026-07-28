@@ -278,6 +278,29 @@ body {
   font-weight: 700;
 }
 
+@keyframes score-pop {
+  0% {
+    transform: scale(1);
+    filter: brightness(1);
+    text-shadow: none;
+  }
+  35% {
+    transform: scale(1.45);
+    filter: brightness(1.7);
+    text-shadow: 0 0 8px var(--accent), 0 0 20px var(--accent);
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+    text-shadow: none;
+  }
+}
+
+#stat-score.score-pop {
+  display: inline-block;
+  animation: score-pop 450ms ease-out;
+}
+
 #board {
   background: #0f172a;
   border-radius: 12px;

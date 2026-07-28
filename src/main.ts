@@ -40,7 +40,11 @@ let collection = loadCollection();
 const builder = new BoardBuilder(trayList, stackList, heightFill, heightLabel, startTurnBtn, boardStatus);
 builder.setCollection(collection);
 
+const SCORE_ANIM_MS = 450;
+
 let score = 0;
+let displayedScore = 0;
+let scoreAnimId = 0;
 let ballsDropped = 0;
 let lives = STARTING_LIVES;
 let gameOver = false;
@@ -49,9 +53,40 @@ let rafId = 0;
 let lastTime = performance.now();
 
 function updateHud() {
-  scoreEl.textContent = String(score);
   ballsEl.textContent = `${ballsDropped}/${MAX_BALL_DROPS}`;
   livesEl.textContent = String(Math.max(0, lives));
+}
+
+// Counts the score display up from its current value to the new total,
+// swelling, brightening, and glowing while it spins.
+function animateScoreDisplay(from: number, to: number) {
+  cancelAnimationFrame(scoreAnimId);
+  const startTime = performance.now();
+  scoreEl.classList.remove("score-pop");
+  void scoreEl.offsetWidth; // restart the CSS animation even if one is already running
+  scoreEl.classList.add("score-pop");
+
+  function step(now: number) {
+    const t = Math.min(1, (now - startTime) / SCORE_ANIM_MS);
+    const eased = 1 - Math.pow(1 - t, 3);
+    displayedScore = Math.round(from + (to - from) * eased);
+    scoreEl.textContent = String(displayedScore);
+    if (t < 1) {
+      scoreAnimId = requestAnimationFrame(step);
+    } else {
+      displayedScore = to;
+      scoreEl.textContent = String(to);
+      scoreEl.classList.remove("score-pop");
+    }
+  }
+  scoreAnimId = requestAnimationFrame(step);
+}
+
+function addScore(points: number) {
+  if (points === 0) return;
+  const from = displayedScore;
+  score += points;
+  animateScoreDisplay(from, score);
 }
 
 // A turn ends when either lives run out or every ball has been dropped and
@@ -78,6 +113,10 @@ function startTurn() {
   if (sections.length === 0) return;
 
   score = 0;
+  displayedScore = 0;
+  cancelAnimationFrame(scoreAnimId);
+  scoreEl.classList.remove("score-pop");
+  scoreEl.textContent = "0";
   ballsDropped = 0;
   lives = STARTING_LIVES;
   gameOver = false;
@@ -87,8 +126,7 @@ function startTurn() {
 
   game = new PachinkoGame(sections, BOARD_WIDTH, {
     onScore: (points) => {
-      score += points;
-      updateHud();
+      addScore(points);
     },
     onMiss: () => {
       lives -= 1;
@@ -98,8 +136,7 @@ function startTurn() {
       // Visual/audio feedback hook for future polish.
     },
     onExplode: (ballsCaught) => {
-      score += ballsCaught * EXPLODE_BONUS_PER_BALL;
-      updateHud();
+      addScore(ballsCaught * EXPLODE_BONUS_PER_BALL);
     },
     onBallSettled: () => {
       checkTurnEnd();
@@ -126,8 +163,7 @@ function endGame() {
   const touchedPins = game.touchedPinCount;
   if (totalPins > 0) {
     const coverageBonus = Math.round(COVERAGE_BONUS_MAX * (touchedPins / totalPins));
-    score += coverageBonus;
-    updateHud();
+    addScore(coverageBonus);
     coverageLabelEl.textContent = `+${coverageBonus} coverage bonus (${touchedPins}/${totalPins} pins hit)`;
   } else {
     coverageLabelEl.textContent = "";
