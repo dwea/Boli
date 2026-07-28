@@ -1,6 +1,5 @@
 import Matter from "matter-js";
 import type {
-  BallGameData,
   BoardMover,
   BucketGameData,
   BucketSectionConfig,
@@ -244,6 +243,3 @@ export function buildFloor(width: number, y: number): Matter.Body {
   return body;
 }
 
-export function makeBallGameData(): BallGameData {
-  return { isBall: true, multipliedIn: new Set<string>() };
-}

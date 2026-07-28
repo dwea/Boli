@@ -1,7 +1,6 @@
 import Matter from "matter-js";
 import { buildBoard } from "./board";
 import { BALL_RADIUS, BUMPER_RADIUS } from "./sections";
-import { makeBallGameData } from "./sections";
 import type {
   BallGameData,
   BucketGameData,
@@ -16,6 +15,11 @@ const { Engine, World, Bodies, Body, Events, Composite } = Matter;
 const EXPLOSION_RADIUS = 90;
 const EXPLOSION_FORCE = 0.03;
 const BUMPER_KICK_SPEED = 15;
+// Guards only against the same crossing event re-triggering (e.g. a
+// freshly spawned sibling ball still overlapping the sensor) -- not a
+// permanent "already doubled here" flag, so every real downward crossing
+// doubles the ball, section repeats and spawned balls included.
+const MULTIPLY_COOLDOWN_MS = 200;
 // Repeated bumper kicks (or bumper + explosion chains) could otherwise
 // compound into runaway velocity; this is the hard ceiling on ball speed.
 const MAX_BALL_SPEED = 22;
@@ -97,11 +101,12 @@ export class PachinkoGame {
     }
 
     if (gameData.isMultiplier) {
-      const multiplier = gameData as MultiplierGameData;
+      if (ball.velocity.y <= 0) return; // only downward crossings double the ball
       const ballData = ball.plugin.game as BallGameData;
-      if (ballData.multipliedIn.has(multiplier.sectionId)) return;
-      ballData.multipliedIn.add(multiplier.sectionId);
-      this.spawnBall(ball.position.x + (Math.random() - 0.5) * 10, ball.position.y, ballData);
+      const now = performance.now();
+      if (now - ballData.lastMultiplyAt < MULTIPLY_COOLDOWN_MS) return;
+      ballData.lastMultiplyAt = now;
+      this.spawnBall(ball.position.x + (Math.random() - 0.5) * 10, ball.position.y, now);
       Body.setVelocity(ball, {
         x: ball.velocity.x + (Math.random() - 0.5) * 1.5,
         y: ball.velocity.y,
@@ -150,7 +155,11 @@ export class PachinkoGame {
     if (caught > 0) this.callbacks.onExplode(caught);
   }
 
-  private spawnBall(x: number, y: number, inheritedData?: BallGameData) {
+  // `bornFromMultiplyAt` gives a ball spawned by a multiplier the same
+  // cooldown timestamp as its sibling, so it doesn't immediately re-trigger
+  // the very event it was just born from while still overlapping the
+  // sensor -- but it's otherwise free to double again like any other ball.
+  private spawnBall(x: number, y: number, bornFromMultiplyAt = -Infinity) {
     const ball = Bodies.circle(x, y, BALL_RADIUS, {
       restitution: 0.55,
       friction: 0.02,
@@ -158,9 +167,7 @@ export class PachinkoGame {
       density: 0.002,
       label: "ball",
     });
-    const gameData: BallGameData = inheritedData
-      ? { isBall: true, multipliedIn: new Set(inheritedData.multipliedIn) }
-      : makeBallGameData();
+    const gameData: BallGameData = { isBall: true, lastMultiplyAt: bornFromMultiplyAt };
     ball.plugin.game = gameData;
     this.balls.add(ball);
     World.add(this.world, ball);
