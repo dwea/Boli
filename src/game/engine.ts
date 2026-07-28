@@ -273,6 +273,17 @@ export class PachinkoGame {
         continue;
       }
 
+      if (body.label === "bucket-wall") {
+        const vertices = body.vertices;
+        ctx.beginPath();
+        ctx.moveTo(vertices[0].x, vertices[0].y);
+        for (const v of vertices.slice(1)) ctx.lineTo(v.x, v.y);
+        ctx.closePath();
+        ctx.fillStyle = "#c7cbde";
+        ctx.fill();
+        continue;
+      }
+
       const data = body.plugin?.game;
       if (!data) continue;
 

@@ -31,6 +31,20 @@ function scoreForOffset(layout: "sparse" | "wide", xFrac: number): number {
   return Math.round(base * (1 + Math.abs(xFrac) * spread));
 }
 
+/** A static, non-sensor rectangle spanning two points -- for the angled bucket lips. */
+function segmentBody(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  thickness: number,
+  options: Matter.IChamferableBodyDefinition
+): Matter.Body {
+  const length = Math.hypot(x2 - x1, y2 - y1);
+  const angle = Math.atan2(y2 - y1, x2 - x1);
+  return Bodies.rectangle((x1 + x2) / 2, (y1 + y2) / 2, length, thickness, { ...options, angle });
+}
+
 function pinBody(x: number, y: number, isExploder: boolean): Matter.Body {
   const body = Bodies.circle(x, y, PIN_RADIUS, {
     isStatic: true,
@@ -91,6 +105,13 @@ function buildPinsSection(
   return { bodies, movers: [] };
 }
 
+const BUCKET_WALL_THICKNESS = 4;
+// A very small angled lip at the mouth of each bucket, flaring outward at
+// the top, so a ball that clips the rim gets funneled inward instead of
+// deflecting away.
+const BUCKET_LIP_SPAN = 8;
+const BUCKET_LIP_RISE = 6;
+
 function buildBucketsSection(
   id: string,
   x0: number,
@@ -104,6 +125,8 @@ function buildBucketsSection(
   const bucketWidth =
     layout === "sparse" ? 24 : (width / count) * 0.92;
   const y = y0 + height / 2;
+  const depth = height * 0.7;
+  const yTop = y - depth / 2;
   const margin = bucketWidth / 2 + 10;
   const usable = width - margin * 2;
 
@@ -116,14 +139,42 @@ function buildBucketsSection(
     const xFrac = (baseX - (x0 + width / 2)) / (width / 2);
     const score = scoreForOffset(layout, xFrac);
 
-    const body = Bodies.rectangle(baseX, y, bucketWidth, height * 0.7, {
+    const leftX = baseX - bucketWidth / 2;
+    const rightX = baseX + bucketWidth / 2;
+
+    // Open-top hard-edged pocket: solid side walls with the scoring sensor
+    // as the pocket's floor, sitting flush between them.
+    const sensorWidth = Math.max(4, bucketWidth - BUCKET_WALL_THICKNESS * 2);
+    const sensor = Bodies.rectangle(baseX, y, sensorWidth, depth, {
       isStatic: true,
       isSensor: true,
       label: "bucket",
     });
     const gameData: BucketGameData = { isBucket: true, score };
-    body.plugin.game = gameData;
-    bodies.push(body);
+    sensor.plugin.game = gameData;
+
+    const wallOptions = { isStatic: true, restitution: 0.3, label: "bucket-wall" };
+    const leftWall = Bodies.rectangle(leftX, y, BUCKET_WALL_THICKNESS, depth, wallOptions);
+    const rightWall = Bodies.rectangle(rightX, y, BUCKET_WALL_THICKNESS, depth, wallOptions);
+    const leftLip = segmentBody(
+      leftX - BUCKET_LIP_SPAN,
+      yTop - BUCKET_LIP_RISE,
+      leftX,
+      yTop,
+      BUCKET_WALL_THICKNESS,
+      wallOptions
+    );
+    const rightLip = segmentBody(
+      rightX + BUCKET_LIP_SPAN,
+      yTop - BUCKET_LIP_RISE,
+      rightX,
+      yTop,
+      BUCKET_WALL_THICKNESS,
+      wallOptions
+    );
+
+    const bucketBodies = [sensor, leftWall, rightWall, leftLip, rightLip];
+    bodies.push(...bucketBodies);
 
     if (config.moving) {
       const amplitude = Math.min(usable / count / 2, 40);
@@ -131,12 +182,16 @@ function buildBucketsSection(
       const phase = Math.random() * Math.PI * 2;
       const minX = x0 + bucketWidth / 2 + 4;
       const maxX = x0 + width - bucketWidth / 2 - 4;
+      const startX = bucketBodies.map((b) => b.position.x);
       movers.push({
-        body,
+        body: sensor,
         update: (elapsedMs: number) => {
           const raw = baseX + amplitude * Math.sin(elapsedMs * speed + phase);
           const clamped = Math.max(minX, Math.min(maxX, raw));
-          Body.setPosition(body, { x: clamped, y });
+          const dx = clamped - baseX;
+          bucketBodies.forEach((b, idx) => {
+            Body.setPosition(b, { x: startX[idx] + dx, y: b.position.y });
+          });
         },
       });
     }
