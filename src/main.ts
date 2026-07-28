@@ -10,6 +10,7 @@ import { PachinkoGame } from "./game/engine";
 
 const BOARD_WIDTH = 360;
 const STARTING_LIVES = 5;
+const MAX_BALL_DROPS = 10;
 const EXPLODE_BONUS_PER_BALL = 5;
 
 const buildScreen = document.getElementById("build-screen")!;
@@ -47,8 +48,17 @@ let lastTime = performance.now();
 
 function updateHud() {
   scoreEl.textContent = String(score);
-  ballsEl.textContent = String(ballsDropped);
+  ballsEl.textContent = `${ballsDropped}/${MAX_BALL_DROPS}`;
   livesEl.textContent = String(Math.max(0, lives));
+}
+
+// A turn ends when either lives run out or every ball has been dropped and
+// none are still in flight -- whichever happens first.
+function checkTurnEnd() {
+  if (gameOver) return;
+  if (lives <= 0 || (ballsDropped >= MAX_BALL_DROPS && game.activeBallCount === 0)) {
+    endGame();
+  }
 }
 
 function sizeCanvas(height: number) {
@@ -80,7 +90,6 @@ function startTurn() {
     onMiss: () => {
       lives -= 1;
       updateHud();
-      if (lives <= 0) endGame();
     },
     onMultiply: () => {
       // Visual/audio feedback hook for future polish.
@@ -90,7 +99,7 @@ function startTurn() {
       updateHud();
     },
     onBallSettled: () => {
-      // Hook for future combo/streak tracking.
+      checkTurnEnd();
     },
   });
 
@@ -167,7 +176,7 @@ function loop(now: number) {
 }
 
 function handleCanvasTap(clientX: number, clientY: number) {
-  if (gameOver) return;
+  if (gameOver || ballsDropped >= MAX_BALL_DROPS) return;
   const rect = canvas.getBoundingClientRect();
   const scaleX = BOARD_WIDTH / rect.width;
   const scaleY = game.boardHeight / rect.height;

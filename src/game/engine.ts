@@ -69,6 +69,7 @@ export class PachinkoGame {
   private balls: Set<Matter.Body> = new Set();
   private particles: Particle[] = [];
   private pinHits = new Map<Matter.Body, number>();
+  private touchedPins = new Set<Matter.Body>();
   private bucketHits = new Map<Matter.Body, number>();
   private simTime = 0;
   private callbacks: GameCallbacks;
@@ -151,6 +152,7 @@ export class PachinkoGame {
 
     if ((gameData as PinGameData).isPin) {
       this.pinHits.set(other, this.simTime);
+      this.touchedPins.add(other);
       if ((gameData as PinGameData).isExploder) {
         this.explodeAt(other.position.x, other.position.y);
       }
@@ -222,6 +224,10 @@ export class PachinkoGame {
 
   get activeBallCount(): number {
     return this.balls.size;
+  }
+
+  get touchedPinCount(): number {
+    return this.touchedPins.size;
   }
 
   tick(deltaMs: number) {
@@ -325,9 +331,10 @@ export class PachinkoGame {
         const pin = data as PinGameData;
         const flash = this.flashAmount(this.pinHits, body, PIN_FLASH_MS);
         const radius = 5 + flash * 4;
+        const touched = this.touchedPins.has(body);
         ctx.beginPath();
         ctx.arc(body.position.x, body.position.y, radius, 0, Math.PI * 2);
-        ctx.fillStyle = pin.isExploder ? "#ff6b6b" : "#5b6a9c";
+        ctx.fillStyle = touched ? "#8ecae6" : pin.isExploder ? "#ff6b6b" : "#5b6a9c";
         ctx.fill();
         if (flash > 0) {
           ctx.fillStyle = `rgba(255, 255, 255, ${flash * 0.85})`;
