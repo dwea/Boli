@@ -6,6 +6,8 @@ import type {
   BumperGameData,
   BumperSectionConfig,
   FloorGameData,
+  LauncherGameData,
+  LauncherSectionConfig,
   MultiplierGameData,
   MultiplierSectionConfig,
   PinGameData,
@@ -253,12 +255,30 @@ function buildBumpersSection(
   return { bodies, movers: [] };
 }
 
+function buildLauncherSection(x0: number, y0: number, width: number, height: number): SectionBuildResult {
+  // A sensor marker, not an obstacle -- purely so the renderer and the tap
+  // handler can find where launcher zones are. Balls pass through it freely.
+  const body = Bodies.rectangle(x0 + width / 2, y0 + height / 2, width, height, {
+    isStatic: true,
+    isSensor: true,
+    label: "launcher",
+  });
+  const gameData: LauncherGameData = { isLauncher: true };
+  body.plugin.game = gameData;
+  return { bodies: [body], movers: [] };
+}
+
 export function buildSection(
   id: string,
   x0: number,
   y0: number,
   width: number,
-  config: PinSectionConfig | BucketSectionConfig | MultiplierSectionConfig | BumperSectionConfig
+  config:
+    | PinSectionConfig
+    | BucketSectionConfig
+    | MultiplierSectionConfig
+    | BumperSectionConfig
+    | LauncherSectionConfig
 ): SectionBuildResult {
   if (config.kind === "pins") {
     return buildPinsSection(x0, y0, width, config.height, config);
@@ -268,6 +288,9 @@ export function buildSection(
   }
   if (config.kind === "bumpers") {
     return buildBumpersSection(x0, y0, width, config.height);
+  }
+  if (config.kind === "launcher") {
+    return buildLauncherSection(x0, y0, width, config.height);
   }
   const height = config.height ?? 16;
   return buildMultiplierSection(id, x0, y0, width, height, config);

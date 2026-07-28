@@ -1,7 +1,14 @@
 import { templateFor, type SectionCard } from "./collection";
-import type { SectionDefinition } from "./game/types";
+import { roleOf } from "./game/types";
+import type { SectionDefinition, SectionRole } from "./game/types";
 
 export const HEIGHT_BUDGET = 480;
+
+const ROLE_LABELS: Record<SectionRole, string> = {
+  launcher: "a launcher",
+  playfield: "a playfield section",
+  catcher: "a catcher",
+};
 
 interface DragState {
   cardId: string;
@@ -22,12 +29,17 @@ function kindOf(templateId: string): string {
   return templateFor(templateId).config.kind;
 }
 
+function roleOfTemplate(templateId: string): SectionRole {
+  return roleOf(templateFor(templateId).config.kind);
+}
+
 export class BoardBuilder {
   private trayEl: HTMLElement;
   private stackEl: HTMLElement;
   private meterFillEl: HTMLElement;
   private meterLabelEl: HTMLElement;
   private startBtn: HTMLButtonElement;
+  private statusEl: HTMLElement;
 
   private trayOrder: string[] = [];
   private stackOrder: string[] = [];
@@ -42,13 +54,15 @@ export class BoardBuilder {
     stackEl: HTMLElement,
     meterFillEl: HTMLElement,
     meterLabelEl: HTMLElement,
-    startBtn: HTMLButtonElement
+    startBtn: HTMLButtonElement,
+    statusEl: HTMLElement
   ) {
     this.trayEl = trayEl;
     this.stackEl = stackEl;
     this.meterFillEl = meterFillEl;
     this.meterLabelEl = meterLabelEl;
     this.startBtn = startBtn;
+    this.statusEl = statusEl;
 
     this.trayIndicator = document.createElement("div");
     this.trayIndicator.className = "insertion-indicator hidden";
@@ -151,7 +165,18 @@ export class BoardBuilder {
     this.meterFillEl.style.width = `${pct}%`;
     this.meterFillEl.classList.toggle("over-budget", total > HEIGHT_BUDGET);
     this.meterLabelEl.textContent = `${total} / ${HEIGHT_BUDGET}px`;
-    this.startBtn.disabled = this.stackOrder.length === 0;
+
+    const roleCounts: Record<SectionRole, number> = { launcher: 0, playfield: 0, catcher: 0 };
+    for (const id of this.stackOrder) {
+      roleCounts[roleOfTemplate(this.cardsById.get(id)!.templateId)]++;
+    }
+    const missing = (Object.keys(ROLE_LABELS) as SectionRole[])
+      .filter((role) => roleCounts[role] === 0)
+      .map((role) => ROLE_LABELS[role]);
+
+    this.startBtn.disabled = missing.length > 0;
+    this.statusEl.textContent =
+      missing.length > 0 ? `Your board needs ${missing.join(", ")} to start.` : "";
   }
 
   private onPointerDown(e: PointerEvent, id: string) {

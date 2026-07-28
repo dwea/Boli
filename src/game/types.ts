@@ -38,11 +38,32 @@ export interface BumperSectionConfig extends SectionConfigBase {
   height: number;
 }
 
+/** The default (and currently only) launcher: tap anywhere across it to launch a ball from there. */
+export interface LauncherSectionConfig extends SectionConfigBase {
+  kind: "launcher";
+  height: number;
+}
+
 export type SectionConfig =
   | PinSectionConfig
   | BucketSectionConfig
   | MultiplierSectionConfig
-  | BumperSectionConfig;
+  | BumperSectionConfig
+  | LauncherSectionConfig;
+
+/**
+ * Every section plays one of three roles in a turn's board. A board needs
+ * at least one launcher (where balls enter), one or more playfield sections
+ * (obstacles the ball travels through), and at least one catcher (where a
+ * ball can actually score) -- enforced when arranging a turn.
+ */
+export type SectionRole = "launcher" | "playfield" | "catcher";
+
+export function roleOf(kind: SectionConfig["kind"]): SectionRole {
+  if (kind === "launcher") return "launcher";
+  if (kind === "buckets") return "catcher";
+  return "playfield";
+}
 
 export interface SectionDefinition {
   id: string;
@@ -55,9 +76,15 @@ export interface BoardMover {
   update: (elapsedMs: number) => void;
 }
 
+export interface LauncherZone {
+  y0: number;
+  height: number;
+}
+
 export interface BuiltBoard {
   bodies: Matter.Body[];
   movers: BoardMover[];
+  launcherZones: LauncherZone[];
   totalHeight: number;
   boardWidth: number;
 }
@@ -96,4 +123,8 @@ export interface FloorGameData {
 
 export interface BumperGameData {
   isBumper: true;
+}
+
+export interface LauncherGameData {
+  isLauncher: true;
 }

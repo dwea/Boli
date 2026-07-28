@@ -67,10 +67,19 @@ export const TEMPLATES: SectionTemplate[] = [
     label: "Bumper Trio",
     config: { kind: "bumpers", height: 140, walls: true },
   },
+  {
+    id: "launcher-basic",
+    label: "Basic Launcher",
+    config: { kind: "launcher", height: 50 },
+  },
 ];
 
 const STORAGE_KEY = "boli-collection-v1";
+// A launcher, a playfield section, and a catcher are mandatory for every
+// board (see roleOf() in game/types.ts) -- the starter deck always carries
+// at least one of each so a turn can always be arranged.
 const STARTER_TEMPLATE_IDS = [
+  "launcher-basic",
   "staggered-basic",
   "sparse-5",
   "doubler",

@@ -1,5 +1,6 @@
 import { buildFloor, buildSection, buildSideWalls } from "./sections";
-import type { BuiltBoard, SectionDefinition } from "./types";
+import { roleOf } from "./types";
+import type { BuiltBoard, LauncherZone, SectionDefinition } from "./types";
 
 export function buildBoard(
   sections: SectionDefinition[],
@@ -7,6 +8,7 @@ export function buildBoard(
 ): BuiltBoard {
   const bodies: BuiltBoard["bodies"] = [];
   const movers: BuiltBoard["movers"] = [];
+  const launcherZones: LauncherZone[] = [];
   let cursorY = 0;
 
   for (const section of sections) {
@@ -22,6 +24,9 @@ export function buildBoard(
     if (section.config.walls) {
       bodies.push(...buildSideWalls(cursorY, height, boardWidth));
     }
+    if (roleOf(section.config.kind) === "launcher") {
+      launcherZones.push({ y0: cursorY, height });
+    }
     cursorY += height;
   }
 
@@ -31,6 +36,7 @@ export function buildBoard(
   return {
     bodies,
     movers,
+    launcherZones,
     totalHeight: cursorY,
     boardWidth,
   };

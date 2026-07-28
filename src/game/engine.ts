@@ -5,6 +5,8 @@ import type {
   BallGameData,
   BucketGameData,
   BumperGameData,
+  LauncherGameData,
+  LauncherZone,
   MultiplierGameData,
   PinGameData,
   SectionDefinition,
@@ -23,8 +25,9 @@ const MULTIPLY_COOLDOWN_MS = 200;
 // Repeated bumper kicks (or bumper + explosion chains) could otherwise
 // compound into runaway velocity; this is the hard ceiling on ball speed.
 const MAX_BALL_SPEED = 22;
-// Balls spawn at y=-10; anything shot back up past this line (a bumper
-// kick, say) bounces back down instead of flying off past the drop point.
+// A hard ceiling above the very top of the board; anything shot back up
+// past this line (a bumper kick, say) bounces back down instead of flying
+// off indefinitely.
 const CEILING_LINE_Y = -20;
 
 function withAlpha(hex: string, alpha: number): string {
@@ -55,6 +58,7 @@ export class PachinkoGame {
   readonly boardWidth: number;
   readonly boardHeight: number;
   private movers: ReturnType<typeof buildBoard>["movers"];
+  private launcherZones: LauncherZone[];
   private balls: Set<Matter.Body> = new Set();
   private particles: Particle[] = [];
   private startedAt = performance.now();
@@ -71,6 +75,7 @@ export class PachinkoGame {
     const board = buildBoard(sections, boardWidth);
     this.boardHeight = board.totalHeight + 20;
     this.movers = board.movers;
+    this.launcherZones = board.launcherZones;
     World.add(this.world, board.bodies);
 
     Events.on(this.engine, "collisionStart", (event) => {
@@ -173,9 +178,13 @@ export class PachinkoGame {
     World.add(this.world, ball);
   }
 
-  dropBall(x: number) {
-    const clamped = Math.max(BALL_RADIUS + 4, Math.min(this.boardWidth - BALL_RADIUS - 4, x));
-    this.spawnBall(clamped, -10);
+  /** Launches a ball if (x, y) falls within one of the board's launcher zones; returns whether it did. */
+  tryLaunchAt(x: number, y: number): boolean {
+    const zone = this.launcherZones.find((z) => y >= z.y0 && y <= z.y0 + z.height);
+    if (!zone) return false;
+    const clampedX = Math.max(BALL_RADIUS + 4, Math.min(this.boardWidth - BALL_RADIUS - 4, x));
+    this.spawnBall(clampedX, zone.y0 + Math.min(10, zone.height / 2));
+    return true;
   }
 
   private removeBall(ball: Matter.Body) {
@@ -186,16 +195,6 @@ export class PachinkoGame {
 
   get activeBallCount(): number {
     return this.balls.size;
-  }
-
-  /**
-   * Board-space y of the oldest still-falling ball, for camera-follow --
-   * i.e. literally "the first ball" of whatever's currently in flight.
-   * Sets preserve insertion order, so the first entry is the oldest.
-   */
-  getLeadBallY(): number | null {
-    for (const ball of this.balls) return ball.position.y;
-    return null;
   }
 
   tick(deltaMs: number) {
@@ -324,6 +323,25 @@ export class PachinkoGame {
         ctx.arc(body.position.x, body.position.y, BUMPER_RADIUS * 0.55, 0, Math.PI * 2);
         ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
         ctx.fill();
+      } else if ((data as LauncherGameData).isLauncher) {
+        const vertices = body.vertices;
+        ctx.beginPath();
+        ctx.moveTo(vertices[0].x, vertices[0].y);
+        for (const v of vertices.slice(1)) ctx.lineTo(v.x, v.y);
+        ctx.closePath();
+        ctx.fillStyle = "rgba(255, 183, 3, 0.08)";
+        ctx.fill();
+        ctx.save();
+        ctx.setLineDash([6, 5]);
+        ctx.strokeStyle = "#ffb703";
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.restore();
+        ctx.fillStyle = "#ffb703";
+        ctx.font = "bold 12px system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("Tap anywhere to launch", body.position.x, body.position.y);
       } else if ((data as MultiplierGameData).isMultiplier) {
         const vertices = body.vertices;
         ctx.beginPath();
