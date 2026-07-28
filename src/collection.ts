@@ -62,6 +62,11 @@ export const TEMPLATES: SectionTemplate[] = [
     label: "Compact Doubler",
     config: { kind: "multiplier", height: 10 },
   },
+  {
+    id: "bumper-trio",
+    label: "Bumper Trio",
+    config: { kind: "bumpers", height: 140 },
+  },
 ];
 
 const STORAGE_KEY = "boli-collection-v1";
@@ -71,6 +76,7 @@ const STARTER_TEMPLATE_IDS = [
   "doubler",
   "funnel-basic",
   "wide-safe",
+  "bumper-trio",
 ];
 
 export function templateFor(templateId: string): SectionTemplate {

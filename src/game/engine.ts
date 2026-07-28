@@ -1,10 +1,11 @@
 import Matter from "matter-js";
 import { buildBoard } from "./board";
-import { BALL_RADIUS } from "./sections";
+import { BALL_RADIUS, BUMPER_RADIUS } from "./sections";
 import { makeBallGameData } from "./sections";
 import type {
   BallGameData,
   BucketGameData,
+  BumperGameData,
   MultiplierGameData,
   PinGameData,
   SectionDefinition,
@@ -14,6 +15,17 @@ const { Engine, World, Bodies, Body, Events, Composite } = Matter;
 
 const EXPLOSION_RADIUS = 90;
 const EXPLOSION_FORCE = 0.03;
+const BUMPER_KICK_SPEED = 15;
+// Repeated bumper kicks (or bumper + explosion chains) could otherwise
+// compound into runaway velocity; this is the hard ceiling on ball speed.
+const MAX_BALL_SPEED = 22;
+
+function withAlpha(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
 
 export interface Particle {
   x: number;
@@ -95,9 +107,25 @@ export class PachinkoGame {
       return;
     }
 
+    if ((gameData as BumperGameData).isBumper) {
+      this.hitBumper(ball, other);
+      return;
+    }
+
     if ((gameData as PinGameData).isExploder) {
       this.explodeAt(other.position.x, other.position.y);
     }
+  }
+
+  private hitBumper(ball: Matter.Body, bumper: Matter.Body) {
+    const dx = ball.position.x - bumper.position.x;
+    const dy = ball.position.y - bumper.position.y;
+    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+    Body.setVelocity(ball, {
+      x: (dx / dist) * BUMPER_KICK_SPEED,
+      y: (dy / dist) * BUMPER_KICK_SPEED - 2,
+    });
+    this.particles.push({ x: bumper.position.x, y: bumper.position.y, bornAt: performance.now(), color: "#ff2d78" });
   }
 
   private explodeAt(x: number, y: number) {
@@ -163,10 +191,23 @@ export class PachinkoGame {
   tick(deltaMs: number) {
     if (!this.running) return;
     Engine.update(this.engine, deltaMs);
+    this.capBallSpeeds();
     const elapsed = performance.now() - this.startedAt;
     for (const mover of this.movers) mover.update(elapsed);
     const now = performance.now();
     this.particles = this.particles.filter((p) => now - p.bornAt < 400);
+  }
+
+  // General safety net so no chain of bumper/exploder hits can compound
+  // into runaway speed -- applies every tick, not just after a bumper hit.
+  private capBallSpeeds() {
+    for (const ball of this.balls) {
+      const speed = Math.hypot(ball.velocity.x, ball.velocity.y);
+      if (speed > MAX_BALL_SPEED) {
+        const scale = MAX_BALL_SPEED / speed;
+        Body.setVelocity(ball, { x: ball.velocity.x * scale, y: ball.velocity.y * scale });
+      }
+    }
   }
 
   stop() {
@@ -211,6 +252,15 @@ export class PachinkoGame {
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(String(bucket.score), body.position.x, body.position.y);
+      } else if ((data as BumperGameData).isBumper) {
+        ctx.beginPath();
+        ctx.arc(body.position.x, body.position.y, BUMPER_RADIUS, 0, Math.PI * 2);
+        ctx.fillStyle = "#ff2d78";
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(body.position.x, body.position.y, BUMPER_RADIUS * 0.55, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
+        ctx.fill();
       } else if ((data as MultiplierGameData).isMultiplier) {
         const vertices = body.vertices;
         ctx.beginPath();
@@ -241,7 +291,7 @@ export class PachinkoGame {
       const age = (now - p.bornAt) / 400;
       ctx.beginPath();
       ctx.arc(p.x, p.y, 10 + age * 60, 0, Math.PI * 2);
-      ctx.strokeStyle = `rgba(255,107,107,${1 - age})`;
+      ctx.strokeStyle = withAlpha(p.color, 1 - age);
       ctx.lineWidth = 3;
       ctx.stroke();
     }

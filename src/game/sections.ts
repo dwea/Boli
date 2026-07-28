@@ -4,6 +4,8 @@ import type {
   BoardMover,
   BucketGameData,
   BucketSectionConfig,
+  BumperGameData,
+  BumperSectionConfig,
   FloorGameData,
   MultiplierGameData,
   MultiplierSectionConfig,
@@ -16,6 +18,7 @@ const { Bodies, Body } = Matter;
 
 export const PIN_RADIUS = 5;
 export const BALL_RADIUS = 7;
+export const BUMPER_RADIUS = 20;
 const WALL_THICKNESS = 16;
 
 export interface SectionBuildResult {
@@ -163,18 +166,54 @@ function buildMultiplierSection(
   return { bodies: [body], movers: [] };
 }
 
+function buildBumpersSection(
+  x0: number,
+  y0: number,
+  width: number,
+  height: number
+): SectionBuildResult {
+  // Classic triangular pinball-bumper trio: one up top, two below.
+  const centerX = x0 + width / 2;
+  const spacing = Math.min(width * 0.22, 70);
+  const topY = y0 + height * 0.38;
+  const bottomY = y0 + height * 0.68;
+
+  const positions = [
+    { x: centerX, y: topY },
+    { x: centerX - spacing, y: bottomY },
+    { x: centerX + spacing, y: bottomY },
+  ];
+
+  const bodies = positions.map(({ x, y }) => {
+    const body = Bodies.circle(x, y, BUMPER_RADIUS, {
+      isStatic: true,
+      restitution: 0.9,
+      friction: 0,
+      label: "bumper",
+    });
+    const gameData: BumperGameData = { isBumper: true };
+    body.plugin.game = gameData;
+    return body;
+  });
+
+  return { bodies, movers: [] };
+}
+
 export function buildSection(
   id: string,
   x0: number,
   y0: number,
   width: number,
-  config: PinSectionConfig | BucketSectionConfig | MultiplierSectionConfig
+  config: PinSectionConfig | BucketSectionConfig | MultiplierSectionConfig | BumperSectionConfig
 ): SectionBuildResult {
   if (config.kind === "pins") {
     return buildPinsSection(x0, y0, width, config.height, config);
   }
   if (config.kind === "buckets") {
     return buildBucketsSection(id, x0, y0, width, config.height, config);
+  }
+  if (config.kind === "bumpers") {
+    return buildBumpersSection(x0, y0, width, config.height);
   }
   const height = config.height ?? 16;
   return buildMultiplierSection(id, x0, y0, width, height, config);

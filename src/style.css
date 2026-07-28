@@ -109,6 +109,10 @@ body {
   border-left-color: #ffb703;
 }
 
+.card-bumpers {
+  border-left-color: #ff2d78;
+}
+
 .card-height {
   color: var(--muted);
   font-size: 11px;

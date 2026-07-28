@@ -23,10 +23,16 @@ export interface MultiplierSectionConfig {
   height?: number;
 }
 
+export interface BumperSectionConfig {
+  kind: "bumpers";
+  height: number;
+}
+
 export type SectionConfig =
   | PinSectionConfig
   | BucketSectionConfig
-  | MultiplierSectionConfig;
+  | MultiplierSectionConfig
+  | BumperSectionConfig;
 
 export interface SectionDefinition {
   id: string;
@@ -69,4 +75,8 @@ export interface MultiplierGameData {
 
 export interface FloorGameData {
   isFloor: true;
+}
+
+export interface BumperGameData {
+  isBumper: true;
 }
