@@ -129,6 +129,7 @@ function buildBucketsSection(
   const y = y0 + height / 2;
   const depth = height * 0.7;
   const yTop = y - depth / 2;
+  const yBottom = y + depth / 2;
   const margin = bucketWidth / 2 + 10;
   const usable = width - margin * 2;
 
@@ -144,10 +145,13 @@ function buildBucketsSection(
     const leftX = baseX - bucketWidth / 2;
     const rightX = baseX + bucketWidth / 2;
 
-    // Open-top hard-edged pocket: solid side walls with the scoring sensor
-    // as the pocket's floor, sitting flush between them.
+    // Open-top hard-edged pocket: solid side walls, with the scoring sensor
+    // just a thin strip at the very bottom -- so a ball visibly drops through
+    // the open pocket interior before it registers, instead of scoring the
+    // instant it clears the mouth.
     const sensorWidth = Math.max(4, bucketWidth - BUCKET_WALL_THICKNESS * 2);
-    const sensor = Bodies.rectangle(baseX, y, sensorWidth, depth, {
+    const sensorHeight = 10;
+    const sensor = Bodies.rectangle(baseX, yBottom - sensorHeight / 2, sensorWidth, sensorHeight, {
       isStatic: true,
       isSensor: true,
       label: "bucket",

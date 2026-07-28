@@ -29,6 +29,10 @@ const MAX_BALL_SPEED = 22;
 // past this line (a bumper kick, say) bounces back down instead of flying
 // off indefinitely.
 const CEILING_LINE_Y = -20;
+// All simulated motion (ball physics, movers) runs at 75% of real time.
+const TIME_SCALE = 0.75;
+const PIN_FLASH_MS = 220;
+const BUCKET_FLASH_MS = 260;
 
 function withAlpha(hex: string, alpha: number): string {
   const r = parseInt(hex.slice(1, 3), 16);
@@ -42,6 +46,9 @@ export interface Particle {
   y: number;
   bornAt: number;
   color: string;
+  /** "ring" (default) is the existing expanding stroke; "glow" is a filled, swelling-then-fading radial blend. */
+  kind?: "ring" | "glow";
+  durationMs?: number;
 }
 
 export interface GameCallbacks {
@@ -61,7 +68,9 @@ export class PachinkoGame {
   private launcherZones: LauncherZone[];
   private balls: Set<Matter.Body> = new Set();
   private particles: Particle[] = [];
-  private startedAt = performance.now();
+  private pinHits = new Map<Matter.Body, number>();
+  private bucketHits = new Map<Matter.Body, number>();
+  private simTime = 0;
   private callbacks: GameCallbacks;
   private running = true;
 
@@ -94,12 +103,28 @@ export class PachinkoGame {
 
     if (gameData.isBucket) {
       const bucket = gameData as BucketGameData;
+      this.bucketHits.set(other, this.simTime);
+      this.particles.push({
+        x: other.position.x,
+        y: other.position.y,
+        bornAt: this.simTime,
+        color: "#ffd166",
+      });
       this.callbacks.onScore(bucket.score, other.position.x, other.position.y);
       this.removeBall(ball);
       return;
     }
 
     if (gameData.isFloor) {
+      // A brief flame-colored glow where the ball hit, as if it fell into lava.
+      this.particles.push({
+        x: ball.position.x,
+        y: ball.position.y,
+        bornAt: this.simTime,
+        color: "#ff4d1f",
+        kind: "glow",
+        durationMs: 550,
+      });
       this.callbacks.onMiss();
       this.removeBall(ball);
       return;
@@ -108,10 +133,9 @@ export class PachinkoGame {
     if (gameData.isMultiplier) {
       if (ball.velocity.y <= 0) return; // only downward crossings double the ball
       const ballData = ball.plugin.game as BallGameData;
-      const now = performance.now();
-      if (now - ballData.lastMultiplyAt < MULTIPLY_COOLDOWN_MS) return;
-      ballData.lastMultiplyAt = now;
-      this.spawnBall(ball.position.x + (Math.random() - 0.5) * 10, ball.position.y, now);
+      if (this.simTime - ballData.lastMultiplyAt < MULTIPLY_COOLDOWN_MS) return;
+      ballData.lastMultiplyAt = this.simTime;
+      this.spawnBall(ball.position.x + (Math.random() - 0.5) * 10, ball.position.y, this.simTime);
       Body.setVelocity(ball, {
         x: ball.velocity.x + (Math.random() - 0.5) * 1.5,
         y: ball.velocity.y,
@@ -125,8 +149,11 @@ export class PachinkoGame {
       return;
     }
 
-    if ((gameData as PinGameData).isExploder) {
-      this.explodeAt(other.position.x, other.position.y);
+    if ((gameData as PinGameData).isPin) {
+      this.pinHits.set(other, this.simTime);
+      if ((gameData as PinGameData).isExploder) {
+        this.explodeAt(other.position.x, other.position.y);
+      }
     }
   }
 
@@ -138,7 +165,7 @@ export class PachinkoGame {
       x: (dx / dist) * BUMPER_KICK_SPEED,
       y: (dy / dist) * BUMPER_KICK_SPEED - 2,
     });
-    this.particles.push({ x: bumper.position.x, y: bumper.position.y, bornAt: performance.now(), color: "#ff2d78" });
+    this.particles.push({ x: bumper.position.x, y: bumper.position.y, bornAt: this.simTime, color: "#ff2d78" });
   }
 
   private explodeAt(x: number, y: number) {
@@ -156,7 +183,7 @@ export class PachinkoGame {
         });
       }
     }
-    this.particles.push({ x, y, bornAt: performance.now(), color: "#ff6b6b" });
+    this.particles.push({ x, y, bornAt: this.simTime, color: "#ff6b6b" });
     if (caught > 0) this.callbacks.onExplode(caught);
   }
 
@@ -199,14 +226,14 @@ export class PachinkoGame {
 
   tick(deltaMs: number) {
     if (!this.running) return;
-    Engine.update(this.engine, deltaMs);
+    const scaledDelta = deltaMs * TIME_SCALE;
+    this.simTime += scaledDelta;
+    Engine.update(this.engine, scaledDelta);
     this.capBallSpeeds();
     this.wrapBallsHorizontally();
     this.enforceCeiling();
-    const elapsed = performance.now() - this.startedAt;
-    for (const mover of this.movers) mover.update(elapsed);
-    const now = performance.now();
-    this.particles = this.particles.filter((p) => now - p.bornAt < 400);
+    for (const mover of this.movers) mover.update(this.simTime);
+    this.particles = this.particles.filter((p) => this.simTime - p.bornAt < (p.durationMs ?? 400));
   }
 
   // Sections without walls have no side colliders at all, so a ball only
@@ -254,6 +281,14 @@ export class PachinkoGame {
     this.running = false;
   }
 
+  // 1 right at the moment of a hit, decaying linearly to 0 over durationMs.
+  private flashAmount(hits: Map<Matter.Body, number>, body: Matter.Body, durationMs: number): number {
+    const hitAt = hits.get(body);
+    if (hitAt === undefined) return 0;
+    const t = (this.simTime - hitAt) / durationMs;
+    return t >= 1 ? 0 : 1 - t;
+  }
+
   render(ctx: CanvasRenderingContext2D) {
     const w = this.boardWidth;
     const h = this.boardHeight;
@@ -288,10 +323,18 @@ export class PachinkoGame {
 
       if ((data as PinGameData).isPin) {
         const pin = data as PinGameData;
+        const flash = this.flashAmount(this.pinHits, body, PIN_FLASH_MS);
+        const radius = 5 + flash * 4;
         ctx.beginPath();
-        ctx.arc(body.position.x, body.position.y, 5, 0, Math.PI * 2);
+        ctx.arc(body.position.x, body.position.y, radius, 0, Math.PI * 2);
         ctx.fillStyle = pin.isExploder ? "#ff6b6b" : "#5b6a9c";
         ctx.fill();
+        if (flash > 0) {
+          ctx.fillStyle = `rgba(255, 255, 255, ${flash * 0.85})`;
+          ctx.beginPath();
+          ctx.arc(body.position.x, body.position.y, radius, 0, Math.PI * 2);
+          ctx.fill();
+        }
         if (pin.isExploder) {
           ctx.strokeStyle = "rgba(255,107,107,0.5)";
           ctx.lineWidth = 2;
@@ -301,7 +344,15 @@ export class PachinkoGame {
         }
       } else if ((data as BucketGameData).isBucket) {
         const bucket = data as BucketGameData;
+        const flash = this.flashAmount(this.bucketHits, body, BUCKET_FLASH_MS);
         const vertices = body.vertices;
+        ctx.save();
+        if (flash > 0) {
+          const scale = 1 + flash * 0.18;
+          ctx.translate(body.position.x, body.position.y);
+          ctx.scale(scale, scale);
+          ctx.translate(-body.position.x, -body.position.y);
+        }
         ctx.beginPath();
         ctx.moveTo(vertices[0].x, vertices[0].y);
         for (const v of vertices.slice(1)) ctx.lineTo(v.x, v.y);
@@ -309,11 +360,16 @@ export class PachinkoGame {
         const hue = 200 - Math.min(bucket.score, 50) * 3;
         ctx.fillStyle = `hsl(${hue}, 70%, 45%)`;
         ctx.fill();
+        if (flash > 0) {
+          ctx.fillStyle = `rgba(255, 255, 255, ${flash * 0.6})`;
+          ctx.fill();
+        }
         ctx.fillStyle = "#fff";
         ctx.font = "bold 12px system-ui, sans-serif";
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(String(bucket.score), body.position.x, body.position.y);
+        ctx.restore();
       } else if ((data as BumperGameData).isBumper) {
         ctx.beginPath();
         ctx.arc(body.position.x, body.position.y, BUMPER_RADIUS, 0, Math.PI * 2);
@@ -367,14 +423,28 @@ export class PachinkoGame {
       ctx.fill();
     }
 
-    const now = performance.now();
     for (const p of this.particles) {
-      const age = (now - p.bornAt) / 400;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, 10 + age * 60, 0, Math.PI * 2);
-      ctx.strokeStyle = withAlpha(p.color, 1 - age);
-      ctx.lineWidth = 3;
-      ctx.stroke();
+      const age = Math.min(1, Math.max(0, (this.simTime - p.bornAt) / (p.durationMs ?? 400)));
+      if (p.kind === "glow") {
+        // Swells out then fades away entirely, like a brief flame flaring up.
+        const radius = 22 * Math.sin(Math.PI * age);
+        if (radius < 0.5) continue;
+        const alpha = 1 - age;
+        const grad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, radius);
+        grad.addColorStop(0, `rgba(255, 235, 190, ${alpha})`);
+        grad.addColorStop(0.45, `rgba(255, 120, 40, ${alpha * 0.85})`);
+        grad.addColorStop(1, "rgba(160, 20, 10, 0)");
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 10 + age * 60, 0, Math.PI * 2);
+        ctx.strokeStyle = withAlpha(p.color, 1 - age);
+        ctx.lineWidth = 3;
+        ctx.stroke();
+      }
     }
   }
 }
