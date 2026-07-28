@@ -23,11 +23,11 @@ const BUMPER_BASE_VALUE = 5;
 // a real-world pacing window (can the player keep the streak alive?), not a
 // simulated-motion duration, so it's measured against wall-clock time.
 const BUMPER_RESET_MS = 5000;
-// Guards only against the same crossing event re-triggering (e.g. a
-// freshly spawned sibling ball still overlapping the sensor) -- not a
-// permanent "already doubled here" flag, so every real downward crossing
-// doubles the ball, section repeats and spawned balls included.
-const MULTIPLY_COOLDOWN_MS = 200;
+// A doubler strip goes on cooldown for this long (real time, same reasoning
+// as the bumper reset above) after it's used -- shared across every ball,
+// not per-ball, so a second ball can't sneak a free double in while it's
+// recharging either.
+const MULTIPLIER_RECHARGE_MS = 5000;
 // Repeated bumper kicks (or bumper + explosion chains) could otherwise
 // compound into runaway velocity; this is the hard ceiling on ball speed.
 const MAX_BALL_SPEED = 22;
@@ -87,6 +87,7 @@ export class PachinkoGame {
   private touchedPins = new Set<Matter.Body>();
   private bucketHits = new Map<Matter.Body, number>();
   private bumperStreaks = new Map<Matter.Body, { value: number; lastHitAt: number }>();
+  private multiplierCooldowns = new Map<Matter.Body, number>();
   private floatingTexts: FloatingText[] = [];
   private simTime = 0;
   private callbacks: GameCallbacks;
@@ -151,10 +152,11 @@ export class PachinkoGame {
 
     if (gameData.isMultiplier) {
       if (ball.velocity.y <= 0) return; // only downward crossings double the ball
-      const ballData = ball.plugin.game as BallGameData;
-      if (this.simTime - ballData.lastMultiplyAt < MULTIPLY_COOLDOWN_MS) return;
-      ballData.lastMultiplyAt = this.simTime;
-      this.spawnBall(ball.position.x + (Math.random() - 0.5) * 10, ball.position.y, this.simTime);
+      const now = performance.now();
+      const lastUsed = this.multiplierCooldowns.get(other);
+      if (lastUsed !== undefined && now - lastUsed < MULTIPLIER_RECHARGE_MS) return;
+      this.multiplierCooldowns.set(other, now);
+      this.spawnBall(ball.position.x + (Math.random() - 0.5) * 10, ball.position.y);
       Body.setVelocity(ball, {
         x: ball.velocity.x + (Math.random() - 0.5) * 1.5,
         y: ball.velocity.y,
@@ -223,11 +225,7 @@ export class PachinkoGame {
     if (caught > 0) this.callbacks.onExplode(caught);
   }
 
-  // `bornFromMultiplyAt` gives a ball spawned by a multiplier the same
-  // cooldown timestamp as its sibling, so it doesn't immediately re-trigger
-  // the very event it was just born from while still overlapping the
-  // sensor -- but it's otherwise free to double again like any other ball.
-  private spawnBall(x: number, y: number, bornFromMultiplyAt = -Infinity) {
+  private spawnBall(x: number, y: number) {
     const ball = Bodies.circle(x, y, BALL_RADIUS, {
       restitution: 0.55,
       friction: 0.02,
@@ -235,7 +233,7 @@ export class PachinkoGame {
       density: 0.002,
       label: "ball",
     });
-    const gameData: BallGameData = { isBall: true, lastMultiplyAt: bornFromMultiplyAt };
+    const gameData: BallGameData = { isBall: true };
     ball.plugin.game = gameData;
     this.balls.add(ball);
     World.add(this.world, ball);
@@ -441,17 +439,19 @@ export class PachinkoGame {
         ctx.textBaseline = "middle";
         ctx.fillText("Tap anywhere to launch", body.position.x, body.position.y);
       } else if ((data as MultiplierGameData).isMultiplier) {
+        const lastUsed = this.multiplierCooldowns.get(body);
+        const ready = lastUsed === undefined || performance.now() - lastUsed >= MULTIPLIER_RECHARGE_MS;
         const vertices = body.vertices;
         ctx.beginPath();
         ctx.moveTo(vertices[0].x, vertices[0].y);
         for (const v of vertices.slice(1)) ctx.lineTo(v.x, v.y);
         ctx.closePath();
-        ctx.fillStyle = "rgba(255, 183, 3, 0.35)";
+        ctx.fillStyle = ready ? "rgba(255, 183, 3, 0.35)" : "rgba(139, 144, 171, 0.2)";
         ctx.fill();
-        ctx.strokeStyle = "#ffb703";
+        ctx.strokeStyle = ready ? "#ffb703" : "rgba(139, 144, 171, 0.6)";
         ctx.lineWidth = 1;
         ctx.stroke();
-        ctx.fillStyle = "#ffb703";
+        ctx.fillStyle = ready ? "#ffb703" : "rgba(139, 144, 171, 0.8)";
         ctx.font = "bold 11px system-ui, sans-serif";
         ctx.textAlign = "center";
         ctx.fillText("x2", body.position.x, body.position.y + 4);

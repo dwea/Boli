@@ -92,14 +92,6 @@ export interface BuiltBoard {
 export interface BallGameData {
   isBall: true;
   scoredOrLost?: boolean;
-  /**
-   * Timestamp (performance.now()) this ball last triggered a multiplier --
-   * only guards against re-triggering the same crossing event within one
-   * short cooldown window. A ball (including one just spawned by a
-   * multiply) can double again at any doubler, including the same one,
-   * once it legitimately re-crosses it downward after that window.
-   */
-  lastMultiplyAt: number;
 }
 
 export interface BucketGameData {
