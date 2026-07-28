@@ -65,7 +65,7 @@ export const TEMPLATES: SectionTemplate[] = [
   {
     id: "bumper-trio",
     label: "Bumper Trio",
-    config: { kind: "bumpers", height: 140 },
+    config: { kind: "bumpers", height: 140, walls: true },
   },
 ];
 

@@ -219,21 +219,17 @@ export function buildSection(
   return buildMultiplierSection(id, x0, y0, width, height, config);
 }
 
-export function buildWalls(width: number, height: number): Matter.Body[] {
-  const left = Bodies.rectangle(
-    -WALL_THICKNESS / 2,
-    height / 2,
-    WALL_THICKNESS,
-    height,
-    { isStatic: true, label: "wall" }
-  );
-  const right = Bodies.rectangle(
-    width + WALL_THICKNESS / 2,
-    height / 2,
-    WALL_THICKNESS,
-    height,
-    { isStatic: true, label: "wall" }
-  );
+/** Solid side walls spanning one section's own y-range (opt-in via `walls: true`). */
+export function buildSideWalls(y0: number, height: number, width: number): Matter.Body[] {
+  const centerY = y0 + height / 2;
+  const left = Bodies.rectangle(-WALL_THICKNESS / 2, centerY, WALL_THICKNESS, height, {
+    isStatic: true,
+    label: "wall",
+  });
+  const right = Bodies.rectangle(width + WALL_THICKNESS / 2, centerY, WALL_THICKNESS, height, {
+    isStatic: true,
+    label: "wall",
+  });
   return [left, right];
 }
 

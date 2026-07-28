@@ -19,6 +19,9 @@ const BUMPER_KICK_SPEED = 15;
 // Repeated bumper kicks (or bumper + explosion chains) could otherwise
 // compound into runaway velocity; this is the hard ceiling on ball speed.
 const MAX_BALL_SPEED = 22;
+// Balls spawn at y=-10; anything shot back up past this line (a bumper
+// kick, say) bounces back down instead of flying off past the drop point.
+const CEILING_LINE_Y = -20;
 
 function withAlpha(hex: string, alpha: number): string {
   const r = parseInt(hex.slice(1, 3), 16);
@@ -192,10 +195,41 @@ export class PachinkoGame {
     if (!this.running) return;
     Engine.update(this.engine, deltaMs);
     this.capBallSpeeds();
+    this.wrapBallsHorizontally();
+    this.enforceCeiling();
     const elapsed = performance.now() - this.startedAt;
     for (const mover of this.movers) mover.update(elapsed);
     const now = performance.now();
     this.particles = this.particles.filter((p) => now - p.bornAt < 400);
+  }
+
+  // Sections without walls have no side colliders at all, so a ball only
+  // ever ends up past the board edge there -- teleport it to the opposite
+  // side, preserving velocity and how far past the edge it had gotten.
+  private wrapBallsHorizontally() {
+    for (const ball of this.balls) {
+      if (ball.position.x < 0) {
+        Body.setPosition(ball, { x: ball.position.x + this.boardWidth, y: ball.position.y });
+      } else if (ball.position.x > this.boardWidth) {
+        Body.setPosition(ball, { x: ball.position.x - this.boardWidth, y: ball.position.y });
+      }
+    }
+  }
+
+  // A thin physical ceiling body risks tunneling: a fast ball can cross its
+  // whole thickness within one physics step, since Matter's collision
+  // detection is discrete rather than continuous. A direct position/velocity
+  // correction (the same approach as the wrap and speed cap above) always
+  // catches it regardless of speed.
+  private enforceCeiling() {
+    for (const ball of this.balls) {
+      if (ball.position.y < CEILING_LINE_Y) {
+        Body.setPosition(ball, { x: ball.position.x, y: CEILING_LINE_Y });
+        if (ball.velocity.y < 0) {
+          Body.setVelocity(ball, { x: ball.velocity.x, y: -ball.velocity.y * 0.6 });
+        }
+      }
+    }
   }
 
   // General safety net so no chain of bumper/exploder hits can compound
@@ -221,6 +255,17 @@ export class PachinkoGame {
 
     const bodies = Composite.allBodies(this.world);
     for (const body of bodies) {
+      if (body.label === "wall") {
+        // The wall bodies themselves sit just off-canvas; draw a thin
+        // indicator along the inside edge so a walled section (no wrap)
+        // reads visibly differently from an open, wrap-around one.
+        const y0 = body.bounds.min.y;
+        const y1 = body.bounds.max.y;
+        ctx.fillStyle = "rgba(139, 144, 171, 0.6)";
+        ctx.fillRect(body.position.x < 0 ? 0 : w - 6, y0, 6, y1 - y0);
+        continue;
+      }
+
       const data = body.plugin?.game;
       if (!data) continue;
 

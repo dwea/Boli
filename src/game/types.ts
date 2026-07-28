@@ -2,7 +2,17 @@ import Matter from "matter-js";
 
 export type PinPattern = "staggered" | "funnel" | "diamond";
 
-export interface PinSectionConfig {
+/**
+ * `walls` controls what happens at the left/right edges of a section's own
+ * height range: unset/false (the default) wraps the ball to the opposite
+ * side, like Asteroids; true gives that section solid side walls instead,
+ * so the ball bounces off them.
+ */
+interface SectionConfigBase {
+  walls?: boolean;
+}
+
+export interface PinSectionConfig extends SectionConfigBase {
   kind: "pins";
   height: number;
   pattern?: PinPattern;
@@ -10,7 +20,7 @@ export interface PinSectionConfig {
   exploderChance?: number;
 }
 
-export interface BucketSectionConfig {
+export interface BucketSectionConfig extends SectionConfigBase {
   kind: "buckets";
   height: number;
   layout: "sparse" | "wide";
@@ -18,12 +28,12 @@ export interface BucketSectionConfig {
   moving?: boolean;
 }
 
-export interface MultiplierSectionConfig {
+export interface MultiplierSectionConfig extends SectionConfigBase {
   kind: "multiplier";
   height?: number;
 }
 
-export interface BumperSectionConfig {
+export interface BumperSectionConfig extends SectionConfigBase {
   kind: "bumpers";
   height: number;
 }
