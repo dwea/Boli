@@ -125,7 +125,7 @@ function buildBucketsSection(
   const layout = config.layout;
   const count = config.bucketCount ?? (layout === "sparse" ? 5 : 2);
   const bucketWidth =
-    layout === "sparse" ? 24 : (width / count) * 0.92;
+    layout === "sparse" ? 24 : (width / count) * 0.8;
   const y = y0 + height / 2;
   const depth = height * 0.7;
   const yTop = y - depth / 2;
@@ -310,14 +310,22 @@ export function buildSection(
   return buildMultiplierSection(id, x0, y0, width, height, config);
 }
 
+// A wall spanning a section's full height meets an open (wrap-around)
+// region right at its top/bottom edge -- a ball riding the wall can get
+// pinched in that corner seam instead of wrapping away. Insetting the wall
+// from both ends leaves a gap there so the ball always has room to clear it.
+const WALL_END_GAP = 24;
+
 /** Solid side walls spanning one section's own y-range (opt-in via `walls: true`). */
 export function buildSideWalls(y0: number, height: number, width: number): Matter.Body[] {
+  const gap = Math.min(WALL_END_GAP, height * 0.15);
+  const wallHeight = Math.max(0, height - gap * 2);
   const centerY = y0 + height / 2;
-  const left = Bodies.rectangle(-WALL_THICKNESS / 2, centerY, WALL_THICKNESS, height, {
+  const left = Bodies.rectangle(-WALL_THICKNESS / 2, centerY, WALL_THICKNESS, wallHeight, {
     isStatic: true,
     label: "wall",
   });
-  const right = Bodies.rectangle(width + WALL_THICKNESS / 2, centerY, WALL_THICKNESS, height, {
+  const right = Bodies.rectangle(width + WALL_THICKNESS / 2, centerY, WALL_THICKNESS, wallHeight, {
     isStatic: true,
     label: "wall",
   });
