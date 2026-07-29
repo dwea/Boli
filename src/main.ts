@@ -18,6 +18,8 @@ const buildScreen = document.getElementById("build-screen")!;
 const playScreen = document.getElementById("play-screen")!;
 const trayList = document.getElementById("tray-list")!;
 const stackList = document.getElementById("stack-list")!;
+const launcherSlot = document.getElementById("launcher-slot")!;
+const catcherSlot = document.getElementById("catcher-slot")!;
 const heightFill = document.getElementById("height-fill")!;
 const heightLabel = document.getElementById("height-label")!;
 const boardStatus = document.getElementById("board-status")!;
@@ -37,7 +39,16 @@ const abortTurnBtn = document.getElementById("abort-turn") as HTMLButtonElement;
 const resetCollectionBtn = document.getElementById("reset-collection") as HTMLButtonElement;
 
 let collection = loadCollection();
-const builder = new BoardBuilder(trayList, stackList, heightFill, heightLabel, startTurnBtn, boardStatus);
+const builder = new BoardBuilder(
+  trayList,
+  stackList,
+  launcherSlot,
+  catcherSlot,
+  heightFill,
+  heightLabel,
+  startTurnBtn,
+  boardStatus
+);
 builder.setCollection(collection);
 
 const SCORE_ANIM_MS = 450;

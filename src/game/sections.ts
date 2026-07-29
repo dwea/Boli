@@ -133,6 +133,16 @@ function buildBucketsSection(
   const margin = bucketWidth / 2 + 10;
   const usable = width - margin * 2;
 
+  // With enough buckets, fixed-size lips flaring toward each other from
+  // adjacent buckets can pinch the gap between them narrower than a ball
+  // (e.g. Sparse Catchers (7)), trapping it bouncing in the seam instead of
+  // falling through. Shrink the lip span so the clear gap between adjacent
+  // bucket footprints never drops below a ball's diameter plus a margin.
+  const spacing = count > 1 ? usable / (count - 1) : Infinity;
+  const MIN_GAP = BALL_RADIUS * 2 + 6;
+  const maxLipSpan = Math.max(0, (spacing - bucketWidth - MIN_GAP) / 2);
+  const lipSpan = Math.min(BUCKET_LIP_SPAN, maxLipSpan);
+
   const bodies: Matter.Body[] = [];
   const movers: BoardMover[] = [];
 
@@ -163,7 +173,7 @@ function buildBucketsSection(
     const leftWall = Bodies.rectangle(leftX, y, BUCKET_WALL_THICKNESS, depth, wallOptions);
     const rightWall = Bodies.rectangle(rightX, y, BUCKET_WALL_THICKNESS, depth, wallOptions);
     const leftLip = segmentBody(
-      leftX - BUCKET_LIP_SPAN,
+      leftX - lipSpan,
       yTop - BUCKET_LIP_RISE,
       leftX,
       yTop,
@@ -171,7 +181,7 @@ function buildBucketsSection(
       wallOptions
     );
     const rightLip = segmentBody(
-      rightX + BUCKET_LIP_SPAN,
+      rightX + lipSpan,
       yTop - BUCKET_LIP_RISE,
       rightX,
       yTop,

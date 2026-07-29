@@ -84,6 +84,18 @@ body {
   text-align: center;
 }
 
+.single-slot {
+  min-height: 44px;
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 2px;
+}
+
+.single-slot.drop-target {
+  border-color: var(--accent);
+  background: rgba(255, 183, 3, 0.08);
+}
+
 .card {
   display: flex;
   justify-content: space-between;
